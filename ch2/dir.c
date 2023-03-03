@@ -4,6 +4,8 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>  // for chdir() close()
+#include <fcntl.h>   // for creat()
 
 #define TEST_DIR "dir"
 

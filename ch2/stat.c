@@ -18,9 +18,7 @@ int main(int argc, char *argv[])
     // int fd = -1;
     // fd = open("stat.c", O_RDONLY);
     // fstat(fd, stbuff);
-
-    
-    printf("File Mode: %hu Real Size: %luB\n", stbuff->st_mode, stbuff->st_size);
+    printf("File Mode: %o Real Size: %luB, Space Size: %luB\n", stbuff->st_mode, stbuff->st_size, stbuff->st_blksize);
     return 0;
 
 }
