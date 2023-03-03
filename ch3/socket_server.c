@@ -10,25 +10,26 @@
 #include <getopt.h>		// for getopt_long
 #include <stdlib.h>		// for atoi
 
-#define MSG_STR "Hello Wrold!"
+#define MSG_STR "Hello Wrold! \n"
+#define MAX_CLIENT 5
 
 void print_usage(char *progname);
 
 int main(int argc, char **argv)
 {
-	int socket_fd = -1;
+	int socket_fd, client_fd = -1;
 	int rv = -1;
 	struct sockaddr_in servaddr;
-	char *servip = NULL;
+	struct sockaddr_in clientaddr;
+	socklen_t cliaddr_len;
 	int port = 0;
 	char buf[1024];
 	// 用在getopt_long中
 	int opt = -1;
-	const char *optstring = "i:p:h";
+	const char *optstring = "p:h";
 	struct option opts[] =
 	{
 		{"help", no_argument, NULL, 'h'},
-		{"ipaddr", required_argument, NULL, 'i'},
 		{"prot", required_argument, NULL, 'p'},
 		{0, 0, 0, 0}
 	};
@@ -37,9 +38,6 @@ int main(int argc, char **argv)
 	{
 		switch (opt)
 		{
-			case 'i' :
-				servip = optarg;
-				break;
 			case 'p' :
 				port = atoi(optarg);
 				break;
@@ -49,7 +47,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-		if( !servip || !port )
+	if( !port )
 	{
 		print_usage(argv[0]);
 		return 0;
@@ -70,60 +68,74 @@ int main(int argc, char **argv)
 	memset(&servaddr, 0, sizeof(servaddr));	
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(port);
-	inet_aton(servip, &servaddr.sin_addr);
-	rv = connect(socket_fd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+	// 监听所有网卡的所有IP地址
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	// 连接服务器失败
+	rv = bind(socket_fd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+
+	// bind链接到port失败
 	if(rv < 0)
 	{
-		printf("Connect to server[%s:%d] failure : %s\n",
-				servip, port, strerror(errno));
+		printf("Socket[%d] bind on port [%d] failure : %s\n",
+				socket_fd, port, strerror(errno));
 		return -2;
 	}
-	// 连接服务器成功,打印服务器IP地址和端口号
-	printf("Connect to server[%s:%d] successfully!\n", servip, port);
+	// bind链接到port成功
+	printf("Socket[%d] bind on port [%d] successfully!\n", socket_fd, port);
 
-	// 向服务器发送一次消息，Hello World!
-	rv = write(socket_fd, MSG_STR, strlen(MSG_STR));
-	if(rv < 0)
-	{
-		printf("Write to server by sockfd[%d] failure : %s\n",
-				socket_fd, strerror(errno));
-		return -3;
-	}
+	// 开启监听
+	listen(socket_fd, MAX_CLIENT);
+
+
+	memset(&clientaddr, 0, sizeof(clientaddr));
 	while(1)
 	{
+		printf("Waiting for client connect...\n");
+		client_fd = accept(socket_fd, (struct sockaddr*)&clientaddr, &cliaddr_len);
+		if(client_fd < 0)
+		{
+			printf("Accept client connect failure: %s\n", strerror(errno));
+			break;
+		}
+		printf("Accept client connect from %s:%d\n",
+				inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
+		while(client_fd)
+
 		// 每次进入循环清空缓冲区
-		// 持续读取服务器发送的数据存入缓冲区
+		// 持续读取客户端发送的数据存入缓冲区
 		memset(buf, 0, sizeof(buf));
-		rv = read(socket_fd, buf, sizeof(buf));
+		rv = read(client_fd, buf, sizeof(buf));
 		if(rv < 0)
 		{
-			printf("Read data form server by sockfd[%d] failure : %s \n",
-					socket_fd, strerror(errno));
-			break;
+			printf("Read data form client by sockfd[%d] failure : %s \n",
+					client_fd, strerror(errno));
+			close(client_fd);
+			continue;
 		}
 		else if(rv == 0)
 		{
-			printf("Socket[%d] get disconnect!\n", socket_fd);
-			break;
+			printf("Socket[%d] get disconnect!\n", client_fd);
+			close(client_fd);
+			continue;
 		}
 		else if(rv > 0)
 		{
-			// 读取成功，本机（客户端）打印读取到的数据
+			// 读取成功，本机（服务端）打印读取到的数据
 			// 读取到的字节数就是read()的返回值
 			printf("Read %d bytes data form Server: %s\n",
 				rv, buf);
 		}
 
-		// 读取成功后进入此，向服务器发送接收到的数据
-		rv = write(socket_fd, buf, sizeof(buf));
+		// 读取成功后进入此，向客户端发送接收到的数据
+		rv = write(client_fd, buf, sizeof(buf));
 		if(rv < 0)
 		{
-			printf("Write to server by sockfd[%d] failure : %s\n",
-					socket_fd, strerror(errno));
-			break;
+			printf("Write to client by sockfd[%d] failure : %s\n",
+					client_fd, strerror(errno));
+			close(client_fd);
 		}
+
+
 	}
 
 	close(socket_fd);
@@ -134,7 +146,6 @@ int main(int argc, char **argv)
 void print_usage(char *progname)
 {
 	printf("%s usage: \n", progname);
-	printf("-i(--ipaddr): sepcify server IP address\n");
 	printf("-p(--port): sepcify server port \n");
 	printf("-h(--help): printf help information \n");
 
