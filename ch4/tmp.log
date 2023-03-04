@@ -1,0 +1,7 @@
+A string write to stdout.
+Befor fork
+This is child proess PID[6168] running...
+PID = 6168, g_var = 7, var = 89
+Befor fork
+This is parent proess PID[6167] waiting...
+PID = 6167, g_var = 6, var = 88
