@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 				inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
 
 		/*************启动子线程*****************/
-		thread_start(&tid, thread_worker, &client_fd);
+		thread_start(&tid, thread_worker, (void *)client_fd);
 
 	}
 
@@ -179,7 +179,7 @@ void *thread_worker(void *ctx)
 		printf("Invalid input arguments in %s()\n", __FUNCTION__);
 		pthread_exit(NULL);
 	}
-	clifd = *((int*)ctx);
+	clifd = (int)ctx;
 
 	printf("Child thread start to commuicate with socket client...\n");
 
