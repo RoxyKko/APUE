@@ -153,15 +153,16 @@ int main(int argc, char **argv)
                 }
                 else
                 {
-                    printf("Socket[%d] read %d bytes data: %s\n", fds_array[i], rv, buf);
+                    printf("Socket[%d] read %d bytes data: %s\n", fds_array[i].fd, rv, buf);
 
                     // 将数据原样返回给客户端
                     if(write(fds_array[i].fd, buf, rv) < 0)
                     {
-                        printf("Socket[%d] write failure:%s\n",fds_array[i], strerror(errno));
+                        printf("Socket[%d] write failure:%s\n",fds_array[i].fd, strerror(errno));
                         close(fds_array[i].fd);
                         fds_array[i].fd = -1;
                     }
+                    memset(buf, 0, sizeof(buf));
                 }
             }
         }
