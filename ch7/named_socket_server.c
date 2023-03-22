@@ -42,7 +42,7 @@ int main(int argc, char** argv)
         unlink(SOCKET_PATH);
         return -2;
     }
-    printf("create socket failure: %s\n", strerror(errno));
+    printf("socket[%d] bind on path \"%s\" ok\n", listen_fd, SOCKET_PATH);
 
     listen(listen_fd, 5); // 最大链接数5
 
@@ -57,6 +57,30 @@ int main(int argc, char** argv)
         }
 
         memset(buf, 0, sizeof(buf));
-        if( rv = read(  ))
+        if( (rv = read( client_fd, buf, sizeof(buf))) < 0)
+        {
+            printf("Read data from client socket[%d] failure: %s \n", client_fd, strerror(errno));
+            close(client_fd);
+            continue;
+        }
+        else if( rv == 0 )
+        {
+            printf("Client socket[%d] disconnected\n", client_fd);
+            close(client_fd);
+            continue;
+        }
+        printf("Read %d bytes data from client socket[%d]: %s\n", rv, client_fd, buf);
+
+        if(write(client_fd, buf, rv) < 0)
+        {
+            printf("Write data to client socket[%d] failure: %s \n", client_fd, strerror(errno));
+            close(client_fd);
+        }
+
+        sleep(1);
+        close(client_fd);
     }
+
+    close(listen_fd);
+    return 0;
 }
